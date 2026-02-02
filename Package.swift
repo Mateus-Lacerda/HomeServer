@@ -4,17 +4,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "HomeServer",
-    platforms: [
-        .macOS(.v26)
-    ],
-    targets: [
-        .executableTarget(
-            name: "HomeServer",
-            linkerSettings: [
-                // Start as a GUI app (removes the backend console window if launched from Finder later)
-                .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist", "-Xlinker", "Info.plist"])
-            ]
-        ),
-    ]
+  name: "HomeServer",
+  platforms: [
+    .macOS(.v26)
+  ],
+  targets: [
+    .executableTarget(
+      name: "HomeServer",
+      linkerSettings: [
+        // Start as a GUI app (removes the backend console window if launched from Finder later)
+        .unsafeFlags([
+          "-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist", "-Xlinker",
+          "Info.plist",
+        ])
+      ]
+    )
+  ]
 )

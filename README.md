@@ -22,6 +22,7 @@ But I wanted it to be easier to configure and also make it pretier.
 
 
 ## Future features
+- Easy way to make repositories on the server sync with the local environment.
 - Make templates editable and removable.
 - Run how many templates I want in parallel.
 - Support custom host names.
