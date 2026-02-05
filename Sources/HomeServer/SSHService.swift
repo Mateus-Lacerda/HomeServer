@@ -164,4 +164,29 @@ struct SSHService {
     }
     return output.stdout ?? ""
   }
+
+  static func addKeyToLocalAuthorizedKeys(key: String) throws {
+    let fileManager = FileManager.default
+    let home = fileManager.homeDirectoryForCurrentUser
+    let sshDir = home.appendingPathComponent(".ssh")
+
+    if !fileManager.fileExists(atPath: sshDir.path) {
+      try fileManager.createDirectory(
+        at: sshDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    }
+
+    let authKeys = sshDir.appendingPathComponent("authorized_keys")
+
+    if !fileManager.fileExists(atPath: authKeys.path) {
+      try "".write(to: authKeys, atomically: true, encoding: .utf8)
+      try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: authKeys.path)
+    }
+
+    let fileHandle = try FileHandle(forWritingTo: authKeys)
+    fileHandle.seekToEndOfFile()
+    if let data = "\n\(key)\n".data(using: .utf8) {
+      fileHandle.write(data)
+    }
+    try fileHandle.close()
+  }
 }
