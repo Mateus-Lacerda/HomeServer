@@ -11,6 +11,9 @@ let package = Package(
   targets: [
     .executableTarget(
       name: "HomeServer",
+      resources: [
+        .process("Resources")
+      ],
       linkerSettings: [
         // Start as a GUI app (removes the backend console window if launched from Finder later)
         .unsafeFlags([

@@ -43,4 +43,26 @@ struct PortCheckService {
 
     return .available
   }
+
+  static func getListeningPID(_ port: Int) -> Int32? {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+    process.arguments = ["-i", ":\(port)", "-sTCP:LISTEN", "-t"]
+
+    let pipe = Pipe()
+    process.standardOutput = pipe
+
+    do {
+      try process.run()
+      process.waitUntilExit()
+      if process.terminationStatus == 0 {
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           let pid = Int32(output.split(separator: "\n").first ?? "") {
+          return pid
+        }
+      }
+    } catch {}
+    return nil
+  }
 }

@@ -7,6 +7,11 @@ struct HomeServerApp: App {
   init() {
     NSApplication.shared.setActivationPolicy(.regular)
     NSApplication.shared.activate(ignoringOtherApps: true)
+
+    if let iconURL = Bundle.module.url(forResource: "AppIcon", withExtension: "icns"),
+       let icon = NSImage(contentsOf: iconURL) {
+      NSApplication.shared.applicationIconImage = icon
+    }
   }
 
   var body: some Scene {

@@ -10,8 +10,6 @@ struct PortMappingView: View {
 
   @StateObject private var tunnelViewModel = TunnelViewModel()
 
-  @StateObject private var syncManager = SyncManager()
-
   @State private var isHoveringApply = false
 
   @State private var ports: [RemotePort] = []
@@ -28,11 +26,15 @@ struct PortMappingView: View {
 
   @State private var searchText = ""
 
-  @State private var showSyncConfig = false
-
   @State private var showPasswordPrompt = false
 
   @State private var sshPassword = ""
+
+  @State private var renamingLayout: PortLayout?
+
+  @State private var renameText = ""
+
+  @State private var showRenameAlert = false
 
   var filteredPorts: [RemotePort] {
 
@@ -105,24 +107,6 @@ struct PortMappingView: View {
 
         HStack(spacing: 16) {
 
-          Button(action: { showSyncConfig = true }) {
-
-            Image(systemName: "arrow.triangle.2.circlepath")
-
-              .font(.system(size: 14, weight: .semibold))
-
-              .foregroundStyle(.secondary)
-
-              .padding(8)
-
-              .background(.ultraThinMaterial)
-
-              .clipShape(Circle())
-
-          }
-
-          .buttonStyle(.plain)
-
           LayoutMenu(
             session: session, onApply: applyLayout,
             onSaveNew: {
@@ -131,6 +115,14 @@ struct PortMappingView: View {
 
               showSaveLayoutAlert = true
 
+            },
+            onRename: { layout in
+              renamingLayout = layout
+              renameText = layout.name
+              showRenameAlert = true
+            },
+            onDelete: { layout in
+              deleteLayout(layout)
             }
           )
 
@@ -141,8 +133,6 @@ struct PortMappingView: View {
             withAnimation(.easeInOut(duration: 0.3)) {
 
               tunnelViewModel.stopTunnel()
-
-              syncManager.stopAll()
 
               onDisconnect()
 
@@ -330,12 +320,6 @@ struct PortMappingView: View {
 
     .onAppear(perform: setupView)
 
-    .onChange(of: session) { _, newValue in
-
-      syncManager.update(session: newValue)
-
-    }
-
     .alert("Save Layout", isPresented: $showSaveLayoutAlert) {
 
       TextField("Layout Name", text: $newLayoutName)
@@ -344,13 +328,15 @@ struct PortMappingView: View {
       Button("Save") { saveLayout() }
 
     }
+    .alert("Rename Layout", isPresented: $showRenameAlert) {
+      TextField("New Name", text: $renameText)
+      Button("Cancel", role: .cancel) {}
+      Button("Rename") { renameLayout() }
+    }
     .sheet(item: $selectedConflict) { port in
       ConflictSheet(port: String(port.localPort), process: port.status.conflictProcess ?? "Unknown")
     }
     .sheet(isPresented: $showAddCustomPort) { AddCustomPortSheet { addCustomPort($0) } }
-    .sheet(isPresented: $showSyncConfig) {
-      SyncView(session: $session, syncManager: syncManager, sessionService: sessionService).frame(width: 600, height: 500)
-    }
     .sheet(isPresented: $showPasswordPrompt) {
       VStack(spacing: 20) {
         Text("Authentication Required").font(.headline)
@@ -377,7 +363,6 @@ struct PortMappingView: View {
         if ports[i].status == .connected { ports[i].status = .preActivated }
       }
     }
-    syncManager.update(session: session)
   }
 
   private func loadData() {
@@ -399,13 +384,27 @@ struct PortMappingView: View {
             status: .disconnected, isCustom: true, customId: c.id)
         }
         combinedPorts.append(contentsOf: custom)
+        let persistedState = TunnelState.load()
+        let persistedLocalPorts = Set(persistedState?.ports.map { $0[0] } ?? [])
+        let isOurSession = persistedState?.sessionId == session.id
+
         for i in 0..<combinedPorts.count {
           let check = PortCheckService.checkPort(combinedPorts[i].localPort)
-          if case .occupied(let proc) = check { combinedPorts[i].status = .occupied(process: proc) }
+          if case .occupied(let proc) = check {
+            if isOurSession && persistedLocalPorts.contains(combinedPorts[i].localPort) {
+              combinedPorts[i].status = .connected
+            } else {
+              combinedPorts[i].status = .occupied(process: proc)
+            }
+          }
         }
         await MainActor.run {
           self.ports = combinedPorts
           self.isLoading = false
+          if isOurSession, let state = persistedState {
+            let connectedPorts = combinedPorts.filter { $0.status == .connected }
+            tunnelViewModel.reclaim(state: state, session: session, ports: connectedPorts)
+          }
         }
       } catch { await MainActor.run { self.isLoading = false } }
     }
@@ -427,6 +426,17 @@ struct PortMappingView: View {
     let mappings = Dictionary(uniqueKeysWithValues: active.map { ($0.remotePort, $0.localPort) })
     session.savedLayouts.append(PortLayout(name: newLayoutName, mappings: mappings))
     sessionService.save(session: session)
+  }
+  private func deleteLayout(_ layout: PortLayout) {
+    session.savedLayouts.removeAll { $0.id == layout.id }
+    sessionService.save(session: session)
+  }
+  private func renameLayout() {
+    guard let layout = renamingLayout,
+          let idx = session.savedLayouts.firstIndex(where: { $0.id == layout.id }) else { return }
+    session.savedLayouts[idx].name = renameText
+    sessionService.save(session: session)
+    renamingLayout = nil
   }
   private func applyLayout(_ layout: PortLayout) {
     if tunnelViewModel.isConnected { return }

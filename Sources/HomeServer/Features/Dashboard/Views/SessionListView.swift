@@ -12,6 +12,13 @@ struct SessionListView: View {
   var body: some View {
     VStack(spacing: 20) {
       HStack {
+        if let logoURL = Bundle.module.url(forResource: "logo", withExtension: "svg"),
+           let logoImage = NSImage(contentsOf: logoURL) {
+          Image(nsImage: logoImage)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 40, height: 40)
+        }
         VStack(alignment: .leading) {
           Text("My Labs").font(.system(size: 32, weight: .light))
           Text("Select a server to connect").font(.caption).foregroundStyle(.secondary)
