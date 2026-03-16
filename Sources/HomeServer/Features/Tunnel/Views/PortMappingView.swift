@@ -110,11 +110,11 @@ struct PortMappingView: View {
           LayoutMenu(
             session: session, onApply: applyLayout,
             onSaveNew: {
-
               newLayoutName = ""
-
               showSaveLayoutAlert = true
-
+            },
+            onSaveToCurrent: { layout in
+              overwriteLayout(layout)
             },
             onRename: { layout in
               renamingLayout = layout
@@ -425,6 +425,13 @@ struct PortMappingView: View {
     let active = ports.filter { $0.status == .preActivated || $0.status == .connected }
     let mappings = Dictionary(uniqueKeysWithValues: active.map { ($0.remotePort, $0.localPort) })
     session.savedLayouts.append(PortLayout(name: newLayoutName, mappings: mappings))
+    sessionService.save(session: session)
+  }
+  private func overwriteLayout(_ layout: PortLayout) {
+    guard let idx = session.savedLayouts.firstIndex(where: { $0.id == layout.id }) else { return }
+    let active = ports.filter { $0.status == .preActivated || $0.status == .connected }
+    let mappings = Dictionary(uniqueKeysWithValues: active.map { ($0.remotePort, $0.localPort) })
+    session.savedLayouts[idx].mappings = mappings
     sessionService.save(session: session)
   }
   private func deleteLayout(_ layout: PortLayout) {
