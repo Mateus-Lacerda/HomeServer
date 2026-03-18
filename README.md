@@ -16,18 +16,17 @@ But I wanted it to be easier to configure and also make it pretier.
 - For each server configured, make templates based on the ports you need to forward to your local machine.
 - Auto discover services' ports with Docker.
 - Add custom services.
+- Make templates editable and removable.
+- Pretty icon.
 
 ...
 - Glass
 
 
 ## Future features
-- Easy way to make repositories on the server sync with the local environment.
-- Make templates editable and removable.
 - Run how many templates I want in parallel.
 - Support custom host names.
 - Menu bar menu to hide the dock icon as the Lord intended.
-- Pretty icon.
 
 
 Vibe coded with no shame.
